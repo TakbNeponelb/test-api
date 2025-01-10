@@ -2,81 +2,61 @@
 
 namespace App\Http\Controllers;
 
+use App\Contracts\SmsApiInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 
 class SmsProxyController extends Controller
 {
 
+
     public function __construct(
-        private $apiBaseUrl = null,
-        private $apiToken = null
-    ) {
-        $this->apiBaseUrl = $apiBaseUrl ?? config('sms.api_url');
-        $this->apiToken = $apiToken ?? config('sms.api_token');
-    }
+        private SmsApiInterface $smsApiService
+    ) {}
 
     public function getNumber(Request $request)
     {
-        $params = $request->validate([
+        $validated = $request->validate([
             'country' => 'required',
             'service' => 'required',
             'rent_time' => 'nullable|integer',
         ]);
 
-        $params['action'] = 'getNumber';
-        $params['token'] = $this->apiToken;
+        $response = $this->smsApiService->getNumber(
+            $validated['country'],
+            $validated['service'],
+            $validated['rent_time'] ?? null
+        );
 
-        return $this->makeApiRequest($params);
+        return response()->json($response);
     }
 
     public function getSms(Request $request)
     {
-        $params = $request->validate([
+        $validated = $request->validate([
             'activation' => 'required',
         ]);
 
-        $params['action'] = 'getSms';
-        $params['token'] = $this->apiToken;
-
-        return $this->makeApiRequest($params);
+        $response = $this->smsApiService->getSms($validated['activation']);
+        return response()->json($response);
     }
 
     public function cancelNumber(Request $request)
     {
-        $params = $request->validate([
+        $validated = $request->validate([
             'activation' => 'required',
         ]);
 
-        $params['action'] = 'cancelNumber';
-        $params['token'] = $this->apiToken;
-
-        return $this->makeApiRequest($params);
+        $response = $this->smsApiService->cancelNumber($validated['activation']);
+        return response()->json($response);
     }
 
     public function getStatus(Request $request)
     {
-        $params = $request->validate([
+        $validated = $request->validate([
             'activation' => 'required',
         ]);
 
-        $params['action'] = 'getStatus';
-        $params['token'] = $this->apiToken;
-
-        return $this->makeApiRequest($params);
-    }
-
-    private function makeApiRequest($params)
-    {
-        try {
-            $response = Http::get($this->apiBaseUrl, $params);
-
-            return response()->json($response->json(), $response->status());
-        } catch (\Exception $e) {
-            return response()->json([
-                'code' => 'error',
-                'message' => 'Error connecting to external API'
-            ], 500);
-        }
+        $response = $this->smsApiService->getStatus($validated['activation']);
+        return response()->json($response);
     }
 }
